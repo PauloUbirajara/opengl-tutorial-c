@@ -13,6 +13,8 @@
 #define PLAYER_SPEED 8
 #define PLAYER_ANGLE_TURN_SPEED 0.1
 #define PI 3.1415926535897
+#define P2 PI / 2
+#define P3 3 * PI / 2
 
 
 float px, py;
@@ -86,9 +88,27 @@ void drawRays3D() {
 
     for (r = 0; r < 1; r++) {
         dof = 0;
-        float aTan = -1 / tan(ra);
-        if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
-        if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
+        // float aTan = -1 / tan(ra);
+        // if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
+        // if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
+        // if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
+        //
+        // while (dof < 8) {
+        //     mx = (int)(rx) >> 6;
+        //     my = (int)(ry) >> 6;
+        //     mp = my * MAP_WIDTH + mx;
+        //
+        //     printf("ue %d %d %d\n", mx, my, mp);
+        //     printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
+        //     if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; }
+        //     else { rx += xo; ry += yo; dof++; }
+        // }
+        //
+        // glColor3f(0, 1, 0); glLineWidth(1); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
+
+        float nTan = -tan(ra);
+        if (ra > P2 && ra < P3) { rx = (((int)px>>6)<<6)-0.0001; ry = (px-rx)*nTan+py; xo=-64; yo=-xo*nTan; }
+        if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6)+64; ry = (px-rx)*nTan+py; xo=64; yo=-xo*nTan; }
         if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
 
         while (dof < 8) {
@@ -102,7 +122,7 @@ void drawRays3D() {
             else { rx += xo; ry += yo; dof++; }
         }
 
-        glColor3f(0, 1, 0); glLineWidth(1); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
+        glColor3f(1, 1, 0); glLineWidth(3); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
     }
 }
 
