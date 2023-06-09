@@ -13,8 +13,9 @@
 #define PLAYER_SPEED 8
 #define PLAYER_ANGLE_TURN_SPEED 0.1
 #define PI 3.1415926535897
-#define P2 PI / 2
-#define P3 3 * PI / 2
+#define P2 PI / 2 // 90 deg
+#define P3 3 * PI / 2 // 270 deg
+#define DR 0.0174533 // one degree in radians
 
 
 float px, py;
@@ -92,44 +93,44 @@ void drawRays3D() {
 
 
     for (r = 0; r < 1; r++) {
+        // Verificar linhas horizontais
         dof = 0;
         float aTan = -1 / tan(ra);
         float distH = 100000, hx=px, hy=py;
-        if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
-        if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
-        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
+        if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; } // Olhando para baixo
+        if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; } // Olhando para cima
+        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; } // Olhando para esquerda ou direita
 
         while (dof < 8) {
             mx = (int)(rx) >> 6;
             my = (int)(ry) >> 6;
             mp = my * MAP_WIDTH + mx;
 
-            printf("ue %d %d %d\n", mx, my, mp);
-            printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
-            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; hx=rx; hy=ry; distH = distance(px, py, hx, hy, ra); }
+            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; hx=rx; hy=ry; distH = distance(px, py, hx, hy, ra); } // Colidiu com parede horizontal
             else { rx += xo; ry += yo; dof++; }
         }
 
+        // Verificar linhas verticais
         dof = 0;
         float nTan = -tan(ra);
         float distV = 100000, vx=px, vy=py;
-        if (ra > P2 && ra < P3) { rx = (((int)px>>6)<<6)-0.0001; ry = (px-rx)*nTan+py; xo=-64; yo=-xo*nTan; }
-        if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6)+64; ry = (px-rx)*nTan+py; xo=64; yo=-xo*nTan; }
-        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
+        if (ra > P2 && ra < P3) { rx = (((int)px>>6)<<6)-0.0001; ry = (px-rx)*nTan+py; xo=-64; yo=-xo*nTan; } // Olhando para esquerda
+        if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6)+64; ry = (px-rx)*nTan+py; xo=64; yo=-xo*nTan; } // Olhando para direita
+        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; } // Olhando para cima ou para baixo
 
         while (dof < 8) {
             mx = (int)(rx) >> 6;
             my = (int)(ry) >> 6;
             mp = my * MAP_WIDTH + mx;
 
-            printf("ue %d %d %d\n", mx, my, mp);
-            printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
-            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; vx=rx; vy=ry; distV = distance(px, py, vx, vy, ra); }
+            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; vx=rx; vy=ry; distV = distance(px, py, vx, vy, ra); } // Colidiu com parede vertical
             else { rx += xo; ry += yo; dof++; }
         }
 
+        // Desenhar apenas a menor distância do raio que colidiu com uma parede horizontal ou vertical
         if (distV < distH) { rx=vx; ry=vy; }
         if (distH < distV) { rx=hx; ry=hy; }
+
         glColor3f(1, 1, 0); glLineWidth(3); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
     }
 }
