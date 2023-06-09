@@ -4,13 +4,13 @@
 #include <GL/glut.h>
 
 #define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 768
+#define WINDOW_HEIGHT 512
 #define MAP_WIDTH 8
 #define MAP_HEIGHT 8
 #define MAP_PIXEL_SIZE 64
 #define PLAYER_PIXEL_SIZE 8
+#define PLAYER_VIEW_DISTANCE 8
 #define PLAYER_SPEED 8
-#define PLAYER_VIEW_DISTANCE 128
 #define PLAYER_ANGLE_TURN_SPEED 0.1
 #define PI 3.1415926535897
 
@@ -37,13 +37,10 @@ void clearBackground() {
 void init() {
     clearBackground();
 
-    px = (WINDOW_WIDTH / 2);
-    px += (int)px % 8;
-    py = (WINDOW_HEIGHT / 2);
-    py += (int)py % 8;
+    px = 300; py = 300;
 
-    pdx = cos(pa);
-    pdy = sin(pa); 
+    pdx = cos(pa) * 5;
+    pdy = sin(pa) * 5;
 }
 
 void drawMap() {
@@ -73,21 +70,47 @@ void drawPlayer() {
     glBegin(GL_POINTS);
     glVertex2i(px, py);
     glEnd();
-}
 
-void drawRays3D() {
-    glPointSize(2);
+    // Linha no jogador para referência
+    glLineWidth(2);
     glBegin(GL_LINES);
     glVertex2i(px, py);
     glVertex2i(px+pdx*PLAYER_VIEW_DISTANCE, py+pdy*PLAYER_VIEW_DISTANCE);
     glEnd();
 }
 
+void drawRays3D() {
+    int r, mx, my, mp, dof;
+    float rx, ry, ra, xo, yo;
+    ra = pa;
+
+    for (r = 0; r < 1; r++) {
+        dof = 0;
+        float aTan = -1 / tan(ra);
+        if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
+        if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
+        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
+
+        while (dof < 8) {
+            mx = (int)(rx) >> 6;
+            my = (int)(ry) >> 6;
+            mp = my * MAP_WIDTH + mx;
+
+            printf("ue %d %d %d\n", mx, my, mp);
+            printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
+            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; }
+            else { rx += xo; ry += yo; dof++; }
+        }
+
+        glColor3f(0, 1, 0); glLineWidth(1); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
+    }
+}
+
 void buttons(unsigned char key, int x, int y) {
-    if (key=='a') { pa -= PLAYER_ANGLE_TURN_SPEED; if (pa<0) {pa += 2*PI;} pdx = cos(pa); pdy = sin(pa); }
-    if (key=='d') { pa += PLAYER_ANGLE_TURN_SPEED; if (pa>2*PI) {pa -= 2*PI;} pdx = cos(pa); pdy = sin(pa); }
-    if (key=='w') { px += pdx * PLAYER_SPEED; py += pdy * PLAYER_SPEED;}
-    if (key=='s') { px -= pdx * PLAYER_SPEED; py -= pdy * PLAYER_SPEED;}
+    if (key=='a') { pa -= PLAYER_ANGLE_TURN_SPEED; if (pa < 0) { pa += 2*PI;} pdx = cos(pa)*5; pdy = sin(pa)*5; }
+    if (key=='d') { pa += PLAYER_ANGLE_TURN_SPEED; if (pa > 2*PI) { pa -= 2*PI;} pdx = cos(pa); pdy = sin(pa); }
+    if (key=='w') { px += pdx; py += pdy; }
+    if (key=='s') { px -= pdx; py -= pdy; }
 
     printf("%c > %.0f %.0f\n", key, px, py);
     printf("%c > %d %d\n", key, x, y);
@@ -98,8 +121,8 @@ void buttons(unsigned char key, int x, int y) {
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
     drawMap();
-    drawPlayer();
     drawRays3D();
+    drawPlayer();
     glutSwapBuffers();
 }
 
