@@ -81,32 +81,38 @@ void drawPlayer() {
     glEnd();
 }
 
+float distance(float ax, float ay, float bx, float by, float ang) {
+    return (sqrt((bx - ax)*(bx - ax)) + ((by - ay)*(by - ay)));
+}
+
 void drawRays3D() {
     int r, mx, my, mp, dof;
     float rx, ry, ra, xo, yo;
     ra = pa;
 
+
     for (r = 0; r < 1; r++) {
         dof = 0;
-        // float aTan = -1 / tan(ra);
-        // if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
-        // if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
-        // if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
-        //
-        // while (dof < 8) {
-        //     mx = (int)(rx) >> 6;
-        //     my = (int)(ry) >> 6;
-        //     mp = my * MAP_WIDTH + mx;
-        //
-        //     printf("ue %d %d %d\n", mx, my, mp);
-        //     printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
-        //     if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; }
-        //     else { rx += xo; ry += yo; dof++; }
-        // }
-        //
-        // glColor3f(0, 1, 0); glLineWidth(1); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
+        float aTan = -1 / tan(ra);
+        float distH = 100000, hx=px, hy=py;
+        if (ra > PI) { ry = (((int)py>>6)<<6)-0.0001; rx = (py-ry)*aTan+px; yo=-64; xo=-yo*aTan; }
+        if (ra < PI) { ry = (((int)py>>6)<<6)+64; rx = (py-ry)*aTan+px; yo=64; xo=-yo*aTan; }
+        if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
 
+        while (dof < 8) {
+            mx = (int)(rx) >> 6;
+            my = (int)(ry) >> 6;
+            mp = my * MAP_WIDTH + mx;
+
+            printf("ue %d %d %d\n", mx, my, mp);
+            printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
+            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; hx=rx; hy=ry; distH = distance(px, py, hx, hy, ra); }
+            else { rx += xo; ry += yo; dof++; }
+        }
+
+        dof = 0;
         float nTan = -tan(ra);
+        float distV = 100000, vx=px, vy=py;
         if (ra > P2 && ra < P3) { rx = (((int)px>>6)<<6)-0.0001; ry = (px-rx)*nTan+py; xo=-64; yo=-xo*nTan; }
         if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6)+64; ry = (px-rx)*nTan+py; xo=64; yo=-xo*nTan; }
         if (ra == 0 || ra == PI) { rx=px; ry=py; dof=8; }
@@ -118,10 +124,12 @@ void drawRays3D() {
 
             printf("ue %d %d %d\n", mx, my, mp);
             printf("eu %.2f %.2f > %.2f %.2f\n", px, py, rx, ry);
-            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; }
+            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) { dof = 8; vx=rx; vy=ry; distV = distance(px, py, vx, vy, ra); }
             else { rx += xo; ry += yo; dof++; }
         }
 
+        if (distV < distH) { rx=vx; ry=vy; }
+        if (distH < distV) { rx=hx; ry=hy; }
         glColor3f(1, 1, 0); glLineWidth(3); glBegin(GL_LINES); glVertex2i(px, py); glVertex2i(rx, ry); glEnd();
     }
 }
