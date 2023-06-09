@@ -11,6 +11,7 @@
 #define PLAYER_PIXEL_SIZE 8
 #define PLAYER_SPEED 8
 #define PLAYER_VIEW_DISTANCE 128
+#define PLAYER_ANGLE_TURN_SPEED 0.1
 #define PI 3.1415926535897
 
 
@@ -33,7 +34,6 @@ void clearBackground() {
     gluOrtho2D(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 }
 
-
 void init() {
     clearBackground();
 
@@ -44,21 +44,6 @@ void init() {
 
     pdx = cos(pa);
     pdy = sin(pa); 
-}
-
-void drawPlayer() {
-    glColor3f(0, 0, 1);
-    glPointSize(PLAYER_PIXEL_SIZE);
-
-    glBegin(GL_POINTS);
-    glVertex2i(px, py);
-    glEnd();
-
-    glPointSize(2);
-    glBegin(GL_LINES);
-    glVertex2i(px, py);
-    glVertex2i(px+pdx*PLAYER_VIEW_DISTANCE, py+pdy*PLAYER_VIEW_DISTANCE);
-    glEnd();
 }
 
 void drawMap() {
@@ -81,16 +66,28 @@ void drawMap() {
     }
 }
 
-void buttons(unsigned char key, int x, int y) {
-    // if (key=='w') py -= PLAYER_SPEED;
-    // if (key=='s') py += PLAYER_SPEED;
-    // if (key=='a') px -= PLAYER_SPEED;
-    // if (key=='d') px += PLAYER_SPEED;
+void drawPlayer() {
+    glColor3f(0, 0, 1);
+    glPointSize(PLAYER_PIXEL_SIZE);
 
-    if (key=='a') { pa -= 0.1; if (pa<0) {pa += 2*PI;} pdx = cos(pa); pdy = sin(pa); }
-    if (key=='d') { pa += 0.1; if (pa>2*PI) {pa -= 2*PI;} pdx = cos(pa); pdy = sin(pa); }
-    if (key=='w') { px += pdx; py += pdy;}
-    if (key=='s') { px -= pdx; py -= pdy;}
+    glBegin(GL_POINTS);
+    glVertex2i(px, py);
+    glEnd();
+}
+
+void drawRays3D() {
+    glPointSize(2);
+    glBegin(GL_LINES);
+    glVertex2i(px, py);
+    glVertex2i(px+pdx*PLAYER_VIEW_DISTANCE, py+pdy*PLAYER_VIEW_DISTANCE);
+    glEnd();
+}
+
+void buttons(unsigned char key, int x, int y) {
+    if (key=='a') { pa -= PLAYER_ANGLE_TURN_SPEED; if (pa<0) {pa += 2*PI;} pdx = cos(pa); pdy = sin(pa); }
+    if (key=='d') { pa += PLAYER_ANGLE_TURN_SPEED; if (pa>2*PI) {pa -= 2*PI;} pdx = cos(pa); pdy = sin(pa); }
+    if (key=='w') { px += pdx * PLAYER_SPEED; py += pdy * PLAYER_SPEED;}
+    if (key=='s') { px -= pdx * PLAYER_SPEED; py -= pdy * PLAYER_SPEED;}
 
     printf("%c > %.0f %.0f\n", key, px, py);
     printf("%c > %d %d\n", key, x, y);
@@ -102,6 +99,7 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);
     drawMap();
     drawPlayer();
+    drawRays3D();
     glutSwapBuffers();
 }
 
