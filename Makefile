@@ -1,4 +1,5 @@
-INPUT_FILE="00_test.c"
+# INPUT_FILE="00_test.c"
+INPUT_FILE="01_test.c"
 OUTPUT_FILE="test.exe"
 
 build:
