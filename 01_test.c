@@ -40,8 +40,8 @@ bool isPlayerLookingLeft() { return cos(player.angle) < 0; }
 bool isPlayerLookingRight() { return cos(player.angle) > 0; }
 float distance(float x0, float y0, float x1, float y1) {
     float a, b, c;
-    a = (x0+x1);
-    b = (y0+y1);
+    a = (x1-x0);
+    b = (y1-y0);
     c = sqrt(a*a + b*b);
 
     return c;
@@ -158,8 +158,10 @@ void drawRays3D() {
         rayDeltaX = 0;
         rayDeltaY = 0;
         depthOfField = 0;
+        float closestWallX0, closestWallY0, closestWallX1, closestWallY1;
 
         // Check for horizontal lines
+        float distH = 9999999;
         if (isPlayerLookingLeft() || isPlayerLookingRight()) {
             glColor3f(1, 0, 0);
             rayDeltaX = cos(ray.angle) * MAP_PIXEL_SIZE;
@@ -223,7 +225,14 @@ void drawRays3D() {
                 glEnd();
                 glColor3f(1, 0, 0);
 
-                continue;
+                float distanceH = distance(ray.x1, ray.y1, wallX1, wallY1);
+                if (distanceH < distH) {
+                    distH = distanceH;
+                    closestWallX0 = wallX0;
+                    closestWallY0 = wallY0;
+                    closestWallX1 = wallX1;
+                    closestWallY1 = wallY1;
+                }
             }
 
             ray.x1 += rayDeltaX;
@@ -235,11 +244,14 @@ void drawRays3D() {
             glEnd();
         }
 
+        ray.x1 = ray.x0;
+        ray.y1 = ray.y0;
         rayDeltaX = 0;
         rayDeltaY = 0;
         depthOfField = 0;
 
         // Check for vertical lines
+        float distV = 9999999;
         if (isPlayerLookingUp() || isPlayerLookingDown()) {
             glColor3f(1, 0, 0);
             rayDeltaX = cos(ray.angle) * MAP_PIXEL_SIZE;
@@ -303,9 +315,18 @@ void drawRays3D() {
                 glEnd();
                 glColor3f(1, 0, 0);
 
-                continue;
+                float distanceV = distance(ray.x1, ray.y1, wallX1, wallY1);
+                if (distanceV < distV) {
+                    distV = distanceV;
+                    closestWallX0 = wallX0;
+                    closestWallY0 = wallY0;
+                    closestWallX1 = wallX1;
+                    closestWallY1 = wallY1;
+                }
             }
 
+            printf("DH[%.2f]\n", distH);
+            printf("DV[%.2f]\n", distV);
             ray.x1 += rayDeltaX;
             ray.y1 += rayDeltaY;
 
@@ -314,6 +335,18 @@ void drawRays3D() {
             glVertex2i(ray.x1, ray.y1);
             glEnd();
         }
+
+        // ERRADO - Usando apenas um dos pontos da parede para identificar o mais próximo, ainda não serve para pegar de fato a aresta mais próxima
+        float distance = distH < distV ? distH : distV;
+        printf("D [%.2f]\n", distance);
+
+        glColor3f(0.7, 0.3, 1);
+        glPointSize(PLAYER_PIXEL_SIZE);
+        glBegin(GL_POINTS);
+        glVertex2i(closestWallX0, closestWallY0);
+        glVertex2i(closestWallX1, closestWallY1);
+        glEnd();
+        glColor3f(1, 0, 0);
 
         glLineWidth(2);
         glBegin(GL_LINES);
