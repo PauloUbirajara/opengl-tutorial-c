@@ -143,11 +143,12 @@ void drawRays3D() {
     int rayCount, depthOfField;
     float rayAngleOffset, rayDeltaX, rayDeltaY;
 
-    rayAngleOffset = 0;
+    rayAngleOffset = -30;
 
     Ray ray;
 
-    for (rayCount = 0; rayCount < 1; rayCount++) {
+    glColor3f(1, 0, 0);
+    for (rayCount = 0; rayCount < 60; rayCount++) {
         ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
 
         // Check horizontal lines
@@ -156,17 +157,6 @@ void drawRays3D() {
         float minHRayX = player.x, minHRayY = player.y;
 
         depthOfField = 0;
-
-        glColor3f(1, 0, 0);
-
-        printf("-----\n");
-        printf("A[%.2f %.2f]\n", sin(player.angle), cos(player.angle));
-        printf("P[%.2f %.2f > %.2f deg]\n", player.x, player.y, player.angle);
-
-        printf("UP %d\n", isPlayerLookingUp());
-        printf("DOWN %d\n", isPlayerLookingDown());
-        printf("LEFT %d\n", isPlayerLookingLeft());
-        printf("RIGHT %d\n", isPlayerLookingRight());
 
         // Up
         if (ray.angle > PI) {
@@ -191,7 +181,6 @@ void drawRays3D() {
             depthOfField = PLAYER_DEPTH_OF_FIELD;
         }
 
-        glColor3f(1, 0, 0);
         while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
             if (!isPointInsideMap(ray.x, ray.y)) {
                 depthOfField = PLAYER_DEPTH_OF_FIELD;
@@ -200,9 +189,7 @@ void drawRays3D() {
 
             int rayMapPosX = (int)ray.x >> 6;
             int rayMapPosY = (int)ray.y >> 6;
-            printf("%.2f %.2f\n", rayMapPosX, rayMapPosY);
             int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
-            printf("%d\n", rayMapPos);
 
 
             if (rayMapPos > 0 && map[rayMapPos] == 1) {
@@ -224,7 +211,6 @@ void drawRays3D() {
 
         depthOfField = 0;
 
-        glColor3f(1, 0, 0);
 
         // Right
         if (ray.angle > P2 && ray.angle < P3) {
@@ -249,7 +235,6 @@ void drawRays3D() {
             depthOfField = PLAYER_DEPTH_OF_FIELD;
         }
 
-        glColor3f(1, 0, 0);
         while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
             if (!isPointInsideMap(ray.x, ray.y)) {
                 depthOfField = PLAYER_DEPTH_OF_FIELD;
@@ -258,9 +243,7 @@ void drawRays3D() {
 
             int rayMapPosX = (int)ray.x >> 6;
             int rayMapPosY = (int)ray.y >> 6;
-            printf("%.2f %.2f\n", rayMapPosX, rayMapPosY);
             int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
-            printf("%d\n", rayMapPos);
 
             if (rayMapPos > 0 && map[rayMapPos] == 1) {
                 depthOfField = PLAYER_DEPTH_OF_FIELD;
@@ -282,8 +265,11 @@ void drawRays3D() {
             ray.y = minVRayY;
         }
 
-        glLineWidth(2); glBegin(GL_LINES); glVertex2i(player.x, player.y); glVertex2i(ray.x, ray.y); glEnd();
-        printf("%.2f %.2f distances\n", distH, distV);
+        glLineWidth(2);
+        glBegin(GL_LINES);
+        glVertex2i(player.x, player.y);
+        glVertex2i(ray.x, ray.y);
+        glEnd();
 
         rayAngleOffset++;
     }
