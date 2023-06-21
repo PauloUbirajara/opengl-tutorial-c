@@ -152,6 +152,8 @@ void drawRays3D() {
 
         // Check horizontal lines
         float aTan = -1/tan(ray.angle);
+        float distH = 1000000;
+        float minHRayX = player.x, minHRayY = player.y;
 
         depthOfField = 0;
 
@@ -204,42 +206,25 @@ void drawRays3D() {
 
 
             if (rayMapPos > 0 && map[rayMapPos] == 1) {
-                glColor3f(0.7, 0.3, 1);
-                glPointSize(PLAYER_PIXEL_SIZE);
-                glBegin(GL_POINTS);
-                glVertex2i(ray.x, ray.y);
-                glEnd();
                 depthOfField = PLAYER_DEPTH_OF_FIELD;
-                glColor3f(1, 0, 0);
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                minHRayX = ray.x;
+                minHRayY = ray.y;
                 continue;
             }
 
             ray.x += rayDeltaX;
             ray.y += rayDeltaY;
-
-            glPointSize(PLAYER_PIXEL_SIZE);
-            glBegin(GL_POINTS);
-            glVertex2i(ray.x, ray.y);
-            glEnd();
         }
-
-        glLineWidth(2); glBegin(GL_LINES); glVertex2i(player.x, player.y); glVertex2i(ray.x, ray.y); glEnd();
 
         // Check vertical lines
         float nTan = -tan(ray.angle);
+        float distV = 1000000;
+        float minVRayX = player.x, minVRayY = player.y;
 
         depthOfField = 0;
 
         glColor3f(1, 0, 0);
-
-        printf("-----\n");
-        printf("A[%.2f %.2f]\n", sin(player.angle), cos(player.angle));
-        printf("P[%.2f %.2f > %.2f deg]\n", player.x, player.y, player.angle);
-
-        printf("UP %d\n", isPlayerLookingUp());
-        printf("DOWN %d\n", isPlayerLookingDown());
-        printf("LEFT %d\n", isPlayerLookingLeft());
-        printf("RIGHT %d\n", isPlayerLookingRight());
 
         // Right
         if (ray.angle > P2 && ray.angle < P3) {
@@ -277,28 +262,28 @@ void drawRays3D() {
             int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
             printf("%d\n", rayMapPos);
 
-
             if (rayMapPos > 0 && map[rayMapPos] == 1) {
-                glColor3f(0.7, 0.3, 1);
-                glPointSize(PLAYER_PIXEL_SIZE);
-                glBegin(GL_POINTS);
-                glVertex2i(ray.x, ray.y);
-                glEnd();
                 depthOfField = PLAYER_DEPTH_OF_FIELD;
-                glColor3f(1, 0, 0);
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                minVRayX = ray.x;
+                minVRayY = ray.y;
                 continue;
             }
 
             ray.x += rayDeltaX;
             ray.y += rayDeltaY;
+        }
 
-            glPointSize(PLAYER_PIXEL_SIZE);
-            glBegin(GL_POINTS);
-            glVertex2i(ray.x, ray.y);
-            glEnd();
+        if (distH < distV) {
+            ray.x = minHRayX;
+            ray.y = minHRayY;
+        } else {
+            ray.x = minVRayX;
+            ray.y = minVRayY;
         }
 
         glLineWidth(2); glBegin(GL_LINES); glVertex2i(player.x, player.y); glVertex2i(ray.x, ray.y); glEnd();
+        printf("%.2f %.2f distances\n", distH, distV);
 
         rayAngleOffset++;
     }
