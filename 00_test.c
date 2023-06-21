@@ -4,22 +4,51 @@
 #include <GL/glut.h>
 
 #define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 510
+#define WINDOW_HEIGHT 512
 #define MAP_WIDTH 8
 #define MAP_HEIGHT 8
+#define MAP_AREA MAP_WIDTH * MAP_HEIGHT
 #define MAP_PIXEL_SIZE 64
 #define PLAYER_PIXEL_SIZE 8
-#define PLAYER_VIEW_DISTANCE 8
-#define PLAYER_SPEED 8
-#define PLAYER_ANGLE_TURN_SPEED 0.1
+#define PLAYER_ANGLE_TURN_SPEED 0.2
+#define PLAYER_MOVE_SPEED 5
+#define PLAYER_DEPTH_OF_FIELD 13
 #define PI 3.1415926535897
 #define P2 PI / 2 // 90 deg
 #define P3 3 * PI / 2 // 270 deg
 #define DR 0.0174533 // one degree in radians
 
+typedef struct {
+    float x;
+    float y;
+    float angle;
+} Player;
 
-float px, py;
-float pdx, pdy, pa;
+typedef struct {
+    float x;
+    float y;
+    float angle;
+} Ray;
+
+Player player;
+
+bool isPlayerLookingDown() { return sin(player.angle) > 0; }
+bool isPlayerLookingUp() { return sin(player.angle) < 0; }
+bool isPlayerLookingLeft() { return cos(player.angle) < 0; }
+bool isPlayerLookingRight() { return cos(player.angle) > 0; }
+float distance(float x0, float y0, float x1, float y1) {
+    float a, b, c;
+    a = (x1-x0);
+    b = (y1-y0);
+    c = sqrt(a*a + b*b);
+
+    return c;
+}
+
+// float distance(float ax, float ay, float bx, float by, float rad) {
+//     return cos(rad) * (bx-ax) - sin(rad) * (by - ay);
+// }
+
 
 int map[] = {
     1,1,1,1,1,1,1,1,
@@ -32,6 +61,15 @@ int map[] = {
     1,1,1,1,1,1,1,1,
 };
 
+bool isPointInsideMap(float x, float y) {
+    return (
+    x > 0 && 
+    y > 0 && 
+    x < MAP_WIDTH * MAP_PIXEL_SIZE && 
+    y < MAP_HEIGHT * MAP_PIXEL_SIZE
+);
+}
+
 void clearBackground() {
     glClearColor(0.3, 0.3, 0.3, 0);
     gluOrtho2D(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
@@ -40,10 +78,8 @@ void clearBackground() {
 void init() {
     clearBackground();
 
-    px = 300; py = 300;
-
-    pdx = cos(pa) * PI / 180;
-    pdy = sin(pa) * PI / 180;
+    player.x = (int) (MAP_WIDTH * MAP_PIXEL_SIZE / 2);
+    player.y = (int) (MAP_HEIGHT * MAP_PIXEL_SIZE / 2);
 }
 
 void drawMap() {
@@ -52,9 +88,13 @@ void drawMap() {
         for (x = 0; x < MAP_WIDTH; x++) {
             x0 = x * MAP_PIXEL_SIZE;
             y0 = y * MAP_PIXEL_SIZE;
+            int pos = y*MAP_WIDTH+x;
 
-            if (map[y*MAP_WIDTH+x] == 1) { glColor3f(1, 1, 1); }
-            else { glColor3f(0, 0, 0); }
+            if (map[pos] == 1) {
+                glColor3f(1, 1, 1); 
+            } else {
+                glColor3f(0, 0, 0); 
+            }
 
             glBegin(GL_QUADS);
             glVertex2i(x0+1, y0+1);
@@ -68,23 +108,25 @@ void drawMap() {
 
 void drawPlayer() {
     glColor3f(0, 0, 1);
+
     glPointSize(PLAYER_PIXEL_SIZE);
 
     glBegin(GL_POINTS);
-    glVertex2i(px, py);
+    glVertex2i(player.x, player.y);
     glEnd();
 
     // Linha no jogador para referência
+    float px, py;
+    float PLAYER_VIEW_DISTANCE = 30;
+
+    px = cos(player.angle) * PLAYER_VIEW_DISTANCE;
+    py = sin(player.angle) * PLAYER_VIEW_DISTANCE;
+
     glLineWidth(2);
     glBegin(GL_LINES);
-    glVertex2i(px, py);
-    glVertex2i(px+pdx*PLAYER_VIEW_DISTANCE, py+pdy*PLAYER_VIEW_DISTANCE);
+    glVertex2i(player.x, player.y);
+    glVertex2i(player.x+px, player.y+py);
     glEnd();
-}
-
-float distance(float ax, float ay, float bx, float by, float ang) {
-    // return (sqrt((bx - ax)*(bx - ax)) + ((by - ay)*(by - ay)));
-    return cos(ang * PI / 180) * (bx-ax) - sin(ang * PI / 180) * (by - ay);
 }
 
 float fixAngle(float ang) {
@@ -93,164 +135,186 @@ float fixAngle(float ang) {
     return ang;
 }
 
-// QUEBROU!!!
+float degToRad(float deg) {
+    return deg * PI / 180;
+}
+
 void drawRays3D() {
-    int r, mx, my, mp, dof;
-    float rx, ry, ra, xo, yo, disT;
+    int rayCount, depthOfField;
+    float rayAngleOffset, rayDeltaX, rayDeltaY;
 
-    // Partindo do ângulo do jogador, reduzir 30 graus em radianos
-    int RAYS_COUNT = 60;
-    ra = fixAngle(pa - DR * RAYS_COUNT / 2);
+    rayAngleOffset = -30;
 
-    for (r = 0; r < RAYS_COUNT; r++) {
-        // Verificar linhas horizontais
-        dof = 0;
-        float aTan = 1/tan(ra);
-        float distH = 100000, hx=px, hy=py;
+    Ray ray;
 
-        if (ra > PI) {
-            // Olhando para baixo
-            ry = ((int)py>>6)-0.0001;
-            rx = (py-ry)*aTan+px;
-            yo=-64;
-            xo=-yo*aTan;
-        } else if (ra < PI) {
-            // Olhando para cima
-            ry = ((int)py>>6)+64;
-            rx = (py-ry)*aTan+px;
-            yo=64;
-            xo=-yo*aTan;
-        } else {
-            // Olhando para esquerda ou direita
-            rx=px;
-            ry=py;
-            dof = 8;
+    for (rayCount = 0; rayCount < 60; rayCount++) {
+        ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
+
+        // Check horizontal lines
+        float aTan = -1/tan(ray.angle);
+        float distH = 1000000;
+        float minHRayX = player.x, minHRayY = player.y;
+
+        depthOfField = 0;
+
+        // Up
+        if (ray.angle > PI) {
+            ray.y = (((int)player.y >> 6) << 6) - 0.0001;
+            ray.x = (player.y - ray.y) * aTan + player.x;
+            rayDeltaY = -MAP_PIXEL_SIZE;
+            rayDeltaX = -rayDeltaY * aTan;
         }
 
-        while (dof < 8) {
-            mx = (int)(rx) >> 6;
-            my = (int)(ry) >> 6;
-            mp = my * MAP_WIDTH + mx;
+        // Down
+        if (ray.angle < PI) {
+            ray.y = (((int)player.y >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.x = (player.y - ray.y) * aTan + player.x;
+            rayDeltaY = MAP_PIXEL_SIZE;
+            rayDeltaX = -rayDeltaY * aTan;
+        }
 
-            // Colidiu com parede horizontal
-            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) {
-                hx=rx;
-                hy=ry;
-                distH = distance(px, py, hx, hy, ra);
-                dof = 8;
-            } else {
-                rx += xo;
-                ry += yo;
-                dof++;
+        // Left or Right
+        if (abs(sin(ray.angle)) <= 0.099) {
+            ray.y = player.y;
+            ray.x = player.x;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
+        }
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                continue;
             }
-        }
 
-        // Verificar linhas verticais
-        dof = 0;
-        float nTan = tan(ra);
-        float distV = 100000, vx=px, vy=py;
+            int rayMapPosX = (int)ray.x >> 6;
+            int rayMapPosY = (int)ray.y >> 6;
+            int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
 
-        // Olhando para esquerda
-        if (ra > P2 && ra < P3) {
-            rx = (((int)px >> 6) << 6) - 0.0001;
-            ry = (px-rx)*nTan+py;
-            xo = -64;
-            yo = -xo * nTan;
-        }
 
-        // Olhando para direita
-        if (ra < P2 || ra > P3) {
-            rx = (((int)px >> 6) << 6) + 64;
-            ry = (px-rx) * nTan + py;
-            xo = 64;
-            yo = -xo * nTan;
-        }
-
-        // Olhando para cima ou para baixo
-        if (ra == 0 || ra == PI) {
-            rx = px;
-            ry = py;
-            dof = 8;
-        }
-
-        while (dof < 8) {
-            mx = (int)(rx) >> 6;
-            my = (int)(ry) >> 6;
-            mp = my * MAP_WIDTH + mx;
-
-            // Colidiu com parede vertical
-            if (mp > 0 && mp < MAP_WIDTH*MAP_HEIGHT && map[mp] == 1) {
-                dof = 8;
-                vx=rx;
-                vy=ry;
-                distV = distance(px, py, vx, vy, ra);
-            } else {
-                rx += xo;
-                ry += yo;
-                dof++;
+            if (rayMapPos > 0 && map[rayMapPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                minHRayX = ray.x;
+                minHRayY = ray.y;
+                continue;
             }
+
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
         }
 
-        // Desenhar apenas a menor distância do raio que colidiu com uma parede horizontal ou vertical
-        if (distV < distH) {
-            rx=vx;
-            ry=vy;
-            disT = distV;
+        // Check vertical lines
+        float nTan = -tan(ray.angle);
+        float distV = 1000000;
+        float minVRayX = player.x, minVRayY = player.y;
+
+        depthOfField = 0;
+
+
+        // Right
+        if (ray.angle > P2 && ray.angle < P3) {
+            ray.x = (((int)player.x >> 6) << 6) - 0.0001;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = -MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
         }
+
+        // Left
+        if (ray.angle < P2 || ray.angle > P3) {
+            ray.x = (((int)player.x >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
+        }
+
+        // Up or Down
+        if (abs(cos(ray.angle)) <= 0.099) {
+            ray.y = player.y;
+            ray.x = player.x;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
+        }
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                continue;
+            }
+
+            int rayMapPosX = (int)ray.x >> 6;
+            int rayMapPosY = (int)ray.y >> 6;
+            int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
+
+            if (rayMapPos > 0 && map[rayMapPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                minVRayX = ray.x;
+                minVRayY = ray.y;
+                continue;
+            }
+
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
+        }
+
+        float minDist;
 
         if (distH < distV) {
-            rx=hx;
-            ry=hy;
-            disT = distH;
+            ray.x = minHRayX;
+            ray.y = minHRayY;
+            minDist = distH;
+            glColor3f(0.9, 0, 0);
+        } else {
+            ray.x = minVRayX;
+            ray.y = minVRayY;
+            minDist = distV;
+            glColor3f(0.7, 0, 0);
         }
 
-        // Raycasting em 2D
-        glColor3f(1, 1, 0);
-        glLineWidth(3);
+        // 2D
+        glLineWidth(2);
         glBegin(GL_LINES);
-        glVertex2i(px, py);
-        glVertex2i(rx, ry);
+        glVertex2i(player.x, player.y);
+        glVertex2i(ray.x, ray.y);
         glEnd();
 
-        // Ajustar visão de peixe
-        float cosAngle = fixAngle(pa - ra);
-        disT = disT * cos(cosAngle);
+        // 3D
+        minDist = cos(fixAngle(player.angle - ray.angle)) * minDist;
+        float lineHeight = MAP_AREA * WINDOW_WIDTH / 2 / minDist;
+        float lineOffsetX = WINDOW_WIDTH / 2;
+        float lineOffsetY = (WINDOW_HEIGHT - lineHeight) / 2;
+        if (lineHeight > lineOffsetX) {
+            lineHeight = lineOffsetX;
+        }
+        glLineWidth(8);
+        glBegin(GL_LINES);
+        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY);
+        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY+lineHeight);
+        glEnd();
 
-        // Desenhar a parte 3D
-        float lineH = (MAP_WIDTH * MAP_HEIGHT * 320) / disT;
-        if (lineH > 320) { lineH = 320; }
-        float lineO = 255 - lineH / 2;
-        glLineWidth(8); glBegin(GL_LINES); glVertex2i(r*8+WINDOW_HEIGHT, lineO); glVertex2i(r*8+WINDOW_HEIGHT, lineH+lineO); glEnd();
-
-        ra = fixAngle(ra + DR);
+        rayAngleOffset++;
     }
 }
 
 void buttons(unsigned char key, int x, int y) {
     if (key=='a') {
-        pa -= PLAYER_ANGLE_TURN_SPEED;
-        if (pa < 0) {
-            pa += 2*PI;
-        }
-        pdx = cos(pa) * 5;
-        pdy = sin(pa) * 5;
+        player.angle -= PLAYER_ANGLE_TURN_SPEED;
     }
+
     if (key=='d') {
-        pa += PLAYER_ANGLE_TURN_SPEED;
-        if (pa > 2*PI) {
-            pa -= 2*PI;
-        }
-        pdx = cos(pa) * 5;
-        pdy = sin(pa) * 5;
+        player.angle += PLAYER_ANGLE_TURN_SPEED;
     }
+
     if (key=='w') {
-        px += pdx * 5;
-        py += pdy * 5;
+        player.x += cos(player.angle) * PLAYER_MOVE_SPEED;
+        player.y += sin(player.angle) * PLAYER_MOVE_SPEED;
     }
+
     if (key=='s') {
-        px -= pdx * 5;
-        py -= pdy * 5;
+        player.x -= cos(player.angle) * PLAYER_MOVE_SPEED;
+        player.y -= sin(player.angle) * PLAYER_MOVE_SPEED;
     }
+
+    player.angle = fixAngle(player.angle);
 
     glutPostRedisplay();
 }
