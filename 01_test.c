@@ -147,7 +147,6 @@ void drawRays3D() {
 
     Ray ray;
 
-    glColor3f(1, 0, 0);
     for (rayCount = 0; rayCount < 60; rayCount++) {
         ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
 
@@ -263,10 +262,12 @@ void drawRays3D() {
             ray.x = minHRayX;
             ray.y = minHRayY;
             minDist = distH;
+            glColor3f(0.9, 0, 0);
         } else {
             ray.x = minVRayX;
             ray.y = minVRayY;
             minDist = distV;
+            glColor3f(0.7, 0, 0);
         }
 
         // 2D
