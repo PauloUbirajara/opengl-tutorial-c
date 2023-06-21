@@ -3,12 +3,12 @@
 #include <math.h>
 #include <GL/glut.h>
 
-#define WINDOW_WIDTH 512
+#define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 512
 #define MAP_WIDTH 8
 #define MAP_HEIGHT 8
 #define MAP_AREA MAP_WIDTH * MAP_HEIGHT
-#define MAP_PIXEL_SIZE WINDOW_WIDTH / MAP_WIDTH
+#define MAP_PIXEL_SIZE 64
 #define PLAYER_PIXEL_SIZE 8
 #define PLAYER_ANGLE_TURN_SPEED 0.2
 #define PLAYER_MOVE_SPEED 5
@@ -257,18 +257,35 @@ void drawRays3D() {
             ray.y += rayDeltaY;
         }
 
+        float minDist;
+
         if (distH < distV) {
             ray.x = minHRayX;
             ray.y = minHRayY;
+            minDist = distH;
         } else {
             ray.x = minVRayX;
             ray.y = minVRayY;
+            minDist = distV;
         }
 
+        // 2D
         glLineWidth(2);
         glBegin(GL_LINES);
         glVertex2i(player.x, player.y);
         glVertex2i(ray.x, ray.y);
+        glEnd();
+
+        // 3D
+        float lineHeight = MAP_AREA * WINDOW_WIDTH / 2 / minDist;
+        float lineOffsetX = WINDOW_WIDTH / 2;
+        if (lineHeight > lineOffsetX) {
+            lineHeight = lineOffsetX;
+        }
+        glLineWidth(8);
+        glBegin(GL_LINES);
+        glVertex2i(rayCount * 8 + lineOffsetX, 0);
+        glVertex2i(rayCount * 8 + lineOffsetX, lineHeight);
         glEnd();
 
         rayAngleOffset++;
