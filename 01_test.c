@@ -277,15 +277,17 @@ void drawRays3D() {
         glEnd();
 
         // 3D
+        minDist = cos(fixAngle(player.angle - ray.angle)) * minDist;
         float lineHeight = MAP_AREA * WINDOW_WIDTH / 2 / minDist;
         float lineOffsetX = WINDOW_WIDTH / 2;
+        float lineOffsetY = (WINDOW_HEIGHT - lineHeight) / 2;
         if (lineHeight > lineOffsetX) {
             lineHeight = lineOffsetX;
         }
         glLineWidth(8);
         glBegin(GL_LINES);
-        glVertex2i(rayCount * 8 + lineOffsetX, 0);
-        glVertex2i(rayCount * 8 + lineOffsetX, lineHeight);
+        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY);
+        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY+lineHeight);
         glEnd();
 
         rayAngleOffset++;
