@@ -3,7 +3,7 @@
 #include <math.h>
 #include <GL/glut.h>
 
-#define WINDOW_WIDTH 1024
+#define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
 #define MAP_WIDTH 8
 #define MAP_HEIGHT 8
@@ -150,124 +150,57 @@ void drawRays3D() {
     for (rayCount = 0; rayCount < 60; rayCount++) {
         ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
 
-        // Check horizontal lines
-        float aTan = -1/tan(ray.angle);
-        float distH = 1000000;
-        float minHRayX = player.x, minHRayY = player.y;
+        // Horizontal check
+        depthOfField=0;
 
-        depthOfField = 0;
+        ray.x = player.x;  
+        ray.y = player.y;
 
-        // Up
-        if (ray.angle > PI) {
-            ray.y = (((int)player.y >> 6) << 6) - 0.0001;
-            ray.x = (player.y - ray.y) * aTan + player.x;
+        /*
+        * Setting the ray.x and ray.y to offset the player position and always
+        * have the lines following the grid lines
+        *
+        * Setting ray delta Y to skip every X pixels between the grid lines
+        * Setting ray delta X to calculate the position where it will hit the
+        * horizontal line
+        *
+        * tan(angle) = oposite side / adjacent side
+        * oposite side = tan(angle) * adjacent side
+        *
+        * the opposite side being the X position
+        */
+
+        if (ray.angle < 2*PI && ray.angle > PI) {
+            // up
             rayDeltaY = -MAP_PIXEL_SIZE;
-            rayDeltaX = -rayDeltaY * aTan;
-        }
+            rayDeltaX = -rayDeltaY * (-1/tan(ray.angle));
 
-        // Down
-        if (ray.angle < PI) {
-            ray.y = (((int)player.y >> 6) << 6) + MAP_PIXEL_SIZE;
-            ray.x = (player.y - ray.y) * aTan + player.x;
+            glColor3f(0, 1, 1);
+        } else if (ray.angle < PI && ray.angle > 0) {
+            // down
             rayDeltaY = MAP_PIXEL_SIZE;
-            rayDeltaX = -rayDeltaY * aTan;
-        }
-
-        // Left or Right
-        if (abs(sin(ray.angle)) <= 0.099) {
-            ray.y = player.y;
-            ray.x = player.x;
-            depthOfField = PLAYER_DEPTH_OF_FIELD;
-        }
-
-        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
-            if (!isPointInsideMap(ray.x, ray.y)) {
-                depthOfField = PLAYER_DEPTH_OF_FIELD;
-                continue;
-            }
-
-            int rayMapPosX = (int)ray.x >> 6;
-            int rayMapPosY = (int)ray.y >> 6;
-            int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
-
-
-            if (rayMapPos > 0 && map[rayMapPos] == 1) {
-                depthOfField = PLAYER_DEPTH_OF_FIELD;
-                distH = distance(player.x, player.y, ray.x, ray.y);
-                minHRayX = ray.x;
-                minHRayY = ray.y;
-                continue;
-            }
-
-            ray.x += rayDeltaX;
-            ray.y += rayDeltaY;
-        }
-
-        // Check vertical lines
-        float nTan = -tan(ray.angle);
-        float distV = 1000000;
-        float minVRayX = player.x, minVRayY = player.y;
-
-        depthOfField = 0;
-
-
-        // Right
-        if (ray.angle > P2 && ray.angle < P3) {
-            ray.x = (((int)player.x >> 6) << 6) - 0.0001;
-            ray.y = (player.x - ray.x) * nTan + player.y;
-            rayDeltaX = -MAP_PIXEL_SIZE;
-            rayDeltaY = -rayDeltaX * nTan;
-        }
-
-        // Left
-        if (ray.angle < P2 || ray.angle > P3) {
-            ray.x = (((int)player.x >> 6) << 6) + MAP_PIXEL_SIZE;
-            ray.y = (player.x - ray.x) * nTan + player.y;
-            rayDeltaX = MAP_PIXEL_SIZE;
-            rayDeltaY = -rayDeltaX * nTan;
-        }
-
-        // Up or Down
-        if (abs(cos(ray.angle)) <= 0.099) {
-            ray.y = player.y;
-            ray.x = player.x;
-            depthOfField = PLAYER_DEPTH_OF_FIELD;
-        }
-
-        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
-            if (!isPointInsideMap(ray.x, ray.y)) {
-                depthOfField = PLAYER_DEPTH_OF_FIELD;
-                continue;
-            }
-
-            int rayMapPosX = (int)ray.x >> 6;
-            int rayMapPosY = (int)ray.y >> 6;
-            int rayMapPos = rayMapPosY * MAP_WIDTH + rayMapPosX;
-
-            if (rayMapPos > 0 && map[rayMapPos] == 1) {
-                depthOfField = PLAYER_DEPTH_OF_FIELD;
-                distV = distance(player.x, player.y, ray.x, ray.y);
-                minVRayX = ray.x;
-                minVRayY = ray.y;
-                continue;
-            }
-
-            ray.x += rayDeltaX;
-            ray.y += rayDeltaY;
-        }
-
-        float minDist;
-
-        if (distH < distV) {
-            ray.x = minHRayX;
-            ray.y = minHRayY;
-            minDist = distH;
-            glColor3f(0.9, 0, 0);
+            rayDeltaX = -rayDeltaY * (-1/tan(ray.angle));
+            glColor3f(1, 0, 1);
         } else {
-            ray.x = minVRayX;
-            ray.y = minVRayY;
-            minDist = distV;
-            glColor3f(0.7, 0, 0);
+            // left or right;
+            ray.x = player.x;
+            ray.y = player.y;
+            depthOfField=PLAYER_DEPTH_OF_FIELD;
+            glColor3f(1, 0, 0);
+        }
+
+        // printf("P[%2.2f %2.2f]\n", player.x, player.y);
+        printf("D[%2.2f %2.2f]\n", rayDeltaX, rayDeltaY);
+        // printf("R[%2.2f %2.2f]\n", ray.x, ray.y);
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
+            glPointSize(PLAYER_PIXEL_SIZE);
+
+            glBegin(GL_POINTS);
+            glVertex2i(ray.x, ray.y);
+            glEnd();
         }
 
         // 2D
@@ -275,20 +208,6 @@ void drawRays3D() {
         glBegin(GL_LINES);
         glVertex2i(player.x, player.y);
         glVertex2i(ray.x, ray.y);
-        glEnd();
-
-        // 3D
-        minDist = cos(fixAngle(player.angle - ray.angle)) * minDist;
-        float lineHeight = MAP_AREA * WINDOW_WIDTH / 2 / minDist;
-        float lineOffsetX = WINDOW_WIDTH / 2;
-        float lineOffsetY = (WINDOW_HEIGHT - lineHeight) / 2;
-        if (lineHeight > lineOffsetX) {
-            lineHeight = lineOffsetX;
-        }
-        glLineWidth(8);
-        glBegin(GL_LINES);
-        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY);
-        glVertex2i(rayCount * 8 + lineOffsetX, lineOffsetY+lineHeight);
         glEnd();
 
         rayAngleOffset++;
