@@ -48,6 +48,11 @@ float distance(float x0, float y0, float x1, float y1) {
 // float distance(float ax, float ay, float bx, float by, float rad) {
 //     return cos(rad) * (bx-ax) - sin(rad) * (by - ay);
 // }
+//
+bool isRayLookingDown(Ray ray) { return sin(ray.angle) > 0; }
+bool isRayLookingUp(Ray ray) { return sin(ray.angle) < 0; }
+bool isRayLookingLeft(Ray ray) { return cos(ray.angle) < 0; }
+bool isRayLookingRight(Ray ray) { return cos(ray.angle) > 0; }
 
 
 int map[] = {
@@ -147,6 +152,21 @@ void drawRays3D() {
 
     Ray ray;
 
+    /*
+    * Setting the ray.x and ray.y to offset the player position and always
+    * have the lines following the grid lines
+    *
+    * Setting ray delta Y to skip every X pixels between the grid lines
+    * Setting ray delta X to calculate the position where it will hit the
+    * horizontal line
+    *
+    * tan(angle) = oposite side / adjacent side
+    * oposite side = tan(angle) * adjacent side
+    *
+    * the opposite side being the X position
+    */
+
+    float distH = 999999, distHRayX, distHRayY;
     for (rayCount = 0; rayCount < 60; rayCount++) {
         ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
 
@@ -156,44 +176,53 @@ void drawRays3D() {
         ray.x = player.x;  
         ray.y = player.y;
 
-        /*
-        * Setting the ray.x and ray.y to offset the player position and always
-        * have the lines following the grid lines
-        *
-        * Setting ray delta Y to skip every X pixels between the grid lines
-        * Setting ray delta X to calculate the position where it will hit the
-        * horizontal line
-        *
-        * tan(angle) = oposite side / adjacent side
-        * oposite side = tan(angle) * adjacent side
-        *
-        * the opposite side being the X position
-        */
+        float aTan = -1 / tan(ray.angle);
 
-        if (ray.angle < 2*PI && ray.angle > PI) {
+        if (isRayLookingUp(ray)) {
             // up
+            ray.y = (((int)player.y >> 6) << 6) - 0.0001;
+            ray.x = (player.y - ray.y) * aTan + player.x;
             rayDeltaY = -MAP_PIXEL_SIZE;
-            rayDeltaX = -rayDeltaY * (-1/tan(ray.angle));
+            rayDeltaX = -rayDeltaY * aTan;
 
             glColor3f(0, 1, 1);
-        } else if (ray.angle < PI && ray.angle > 0) {
-            // down
+        } else if (isRayLookingDown(ray)) {
+            ray.y = (((int)player.y >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.x = (player.y - ray.y) * aTan + player.x;
             rayDeltaY = MAP_PIXEL_SIZE;
-            rayDeltaX = -rayDeltaY * (-1/tan(ray.angle));
+            rayDeltaX = -rayDeltaY * aTan;
+
             glColor3f(1, 0, 1);
         } else {
             // left or right;
             ray.x = player.x;
             ray.y = player.y;
-            depthOfField=PLAYER_DEPTH_OF_FIELD;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
             glColor3f(1, 0, 0);
         }
 
-        // printf("P[%2.2f %2.2f]\n", player.x, player.y);
-        printf("D[%2.2f %2.2f]\n", rayDeltaX, rayDeltaY);
-        // printf("R[%2.2f %2.2f]\n", ray.x, ray.y);
-
         while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                distHRayX = ray.x;
+                distHRayY = ray.y;
+                continue;
+            }
+
+            int rayPosY = ray.y / MAP_PIXEL_SIZE;
+            int rayPosX = ray.x / MAP_PIXEL_SIZE;
+
+            int rayPos = rayPosY * MAP_HEIGHT + rayPosX;
+
+            if (rayPos > 0 && map[rayPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                distHRayX = ray.x;
+                distHRayY = ray.y;
+                continue;
+            }
+
             ray.x += rayDeltaX;
             ray.y += rayDeltaY;
             glPointSize(PLAYER_PIXEL_SIZE);
@@ -201,6 +230,79 @@ void drawRays3D() {
             glBegin(GL_POINTS);
             glVertex2i(ray.x, ray.y);
             glEnd();
+        }
+
+
+        // Vertical check
+        depthOfField=0;
+
+        ray.x = player.x;  
+        ray.y = player.y;
+
+        float nTan = -tan(ray.angle);
+
+        float distV = 999999, distVRayX, distVRayY;
+        if (isRayLookingLeft(ray)) {
+            ray.x = (((int)player.x >> 6) << 6) - 0.0001;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = -MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
+
+            glColor3f(0, 1, 1);
+        } else if (isRayLookingRight(ray)) {
+            ray.x = (((int)player.x >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
+
+            glColor3f(1, 0, 1);
+        } else {
+            ray.x = player.x;
+            ray.y = player.y;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
+            glColor3f(1, 0, 0);
+        }
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                distVRayX = ray.x;
+                distVRayY = ray.y;
+                continue;
+            }
+
+            int rayPosY = ray.y / MAP_PIXEL_SIZE;
+            int rayPosX = ray.x / MAP_PIXEL_SIZE;
+
+            int rayPos = rayPosY * MAP_HEIGHT + rayPosX;
+
+            if (rayPos > 0 && map[rayPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                distVRayX = ray.x;
+                distVRayY = ray.y;
+                continue;
+            }
+
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
+            glPointSize(PLAYER_PIXEL_SIZE);
+
+            glBegin(GL_POINTS);
+            glVertex2i(ray.x, ray.y);
+            glEnd();
+        }
+
+        float disT;
+        if (distH < distV) {
+            disT = distH;
+            ray.x = distHRayX;
+            ray.y = distHRayY;
+        } else {
+            disT = distV;
+            ray.x = distVRayX;
+            ray.y = distVRayY;
         }
 
         // 2D
