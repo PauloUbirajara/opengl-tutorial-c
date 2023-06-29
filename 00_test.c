@@ -7,16 +7,12 @@
 #define WINDOW_HEIGHT 512
 #define MAP_WIDTH 8
 #define MAP_HEIGHT 8
-#define MAP_AREA MAP_WIDTH * MAP_HEIGHT
 #define MAP_PIXEL_SIZE 64
 #define PLAYER_PIXEL_SIZE 8
 #define PLAYER_ANGLE_TURN_SPEED 0.2
 #define PLAYER_MOVE_SPEED 5
 #define PLAYER_DEPTH_OF_FIELD 13
 #define PI 3.1415926535897
-#define P2 PI / 2 // 90 deg
-#define P3 3 * PI / 2 // 270 deg
-#define DR 0.0174533 // one degree in radians
 
 typedef struct {
     float x;
@@ -166,6 +162,8 @@ void drawRays3D() {
     * the opposite side being the X position
     */
 
+    glColor3f(1, 0, 0);
+
     float distH = 999999, distHRayX, distHRayY;
     for (rayCount = 0; rayCount < 60; rayCount++) {
         ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
@@ -184,21 +182,16 @@ void drawRays3D() {
             ray.x = (player.y - ray.y) * aTan + player.x;
             rayDeltaY = -MAP_PIXEL_SIZE;
             rayDeltaX = -rayDeltaY * aTan;
-
-            glColor3f(0, 1, 1);
         } else if (isRayLookingDown(ray)) {
             ray.y = (((int)player.y >> 6) << 6) + MAP_PIXEL_SIZE;
             ray.x = (player.y - ray.y) * aTan + player.x;
             rayDeltaY = MAP_PIXEL_SIZE;
             rayDeltaX = -rayDeltaY * aTan;
-
-            glColor3f(1, 0, 1);
         } else {
             // left or right;
             ray.x = player.x;
             ray.y = player.y;
             depthOfField = PLAYER_DEPTH_OF_FIELD;
-            glColor3f(1, 0, 0);
         }
 
         while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
@@ -225,13 +218,7 @@ void drawRays3D() {
 
             ray.x += rayDeltaX;
             ray.y += rayDeltaY;
-            glPointSize(PLAYER_PIXEL_SIZE);
-
-            glBegin(GL_POINTS);
-            glVertex2i(ray.x, ray.y);
-            glEnd();
         }
-
 
         // Vertical check
         depthOfField=0;
@@ -248,19 +235,16 @@ void drawRays3D() {
             rayDeltaX = -MAP_PIXEL_SIZE;
             rayDeltaY = -rayDeltaX * nTan;
 
-            glColor3f(0, 1, 1);
         } else if (isRayLookingRight(ray)) {
             ray.x = (((int)player.x >> 6) << 6) + MAP_PIXEL_SIZE;
             ray.y = (player.x - ray.x) * nTan + player.y;
             rayDeltaX = MAP_PIXEL_SIZE;
             rayDeltaY = -rayDeltaX * nTan;
 
-            glColor3f(1, 0, 1);
         } else {
             ray.x = player.x;
             ray.y = player.y;
             depthOfField = PLAYER_DEPTH_OF_FIELD;
-            glColor3f(1, 0, 0);
         }
 
         while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
@@ -287,11 +271,6 @@ void drawRays3D() {
 
             ray.x += rayDeltaX;
             ray.y += rayDeltaY;
-            glPointSize(PLAYER_PIXEL_SIZE);
-
-            glBegin(GL_POINTS);
-            glVertex2i(ray.x, ray.y);
-            glEnd();
         }
 
         float disT;
