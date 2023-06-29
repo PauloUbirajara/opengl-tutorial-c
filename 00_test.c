@@ -13,6 +13,8 @@
 #define PLAYER_MOVE_SPEED 5
 #define PLAYER_DEPTH_OF_FIELD 13
 #define PI 3.1415926535897
+#define MODE_2D 0
+#define MODE_3D 1
 
 typedef struct {
     float x;
@@ -27,6 +29,7 @@ typedef struct {
 } Ray;
 
 Player player;
+int mode = MODE_2D;
 
 bool isPlayerLookingDown() { return sin(player.angle) > 0; }
 bool isPlayerLookingUp() { return sin(player.angle) < 0; }
@@ -83,7 +86,7 @@ void init() {
     player.y = (int) (MAP_HEIGHT * MAP_PIXEL_SIZE / 2);
 }
 
-void drawMap() {
+void drawMap2D() {
     int x, y, x0, y0;
     for (y = 0; y < MAP_HEIGHT; y++) {
         for (x = 0; x < MAP_WIDTH; x++) {
@@ -140,7 +143,7 @@ float degToRad(float deg) {
     return deg * PI / 180;
 }
 
-void drawRays3D() {
+void drawRays2D() {
     int rayCount, depthOfField;
     float rayAngleOffset, rayDeltaX, rayDeltaY;
 
@@ -177,7 +180,6 @@ void drawRays3D() {
         float aTan = -1 / tan(ray.angle);
 
         if (isRayLookingUp(ray)) {
-            // up
             ray.y = (((int)player.y >> 6) << 6) - 0.0001;
             ray.x = (player.y - ray.y) * aTan + player.x;
             rayDeltaY = -MAP_PIXEL_SIZE;
@@ -295,6 +297,165 @@ void drawRays3D() {
     }
 }
 
+void drawRays3D() {
+    int rayCount, depthOfField;
+    float rayAngleOffset, rayDeltaX, rayDeltaY;
+
+    rayAngleOffset = -30;
+
+    Ray ray;
+
+    /*
+    * Setting the ray.x and ray.y to offset the player position and always
+    * have the lines following the grid lines
+    *
+    * Setting ray delta Y to skip every X pixels between the grid lines
+    * Setting ray delta X to calculate the position where it will hit the
+    * horizontal line
+    *
+    * tan(angle) = oposite side / adjacent side
+    * oposite side = tan(angle) * adjacent side
+    *
+    * the opposite side being the X position
+    */
+
+    glColor3f(1, 0, 0);
+
+    float distH = 999999, distHRayX, distHRayY;
+    int maxRayCount = 60;
+    for (rayCount = 0; rayCount < maxRayCount; rayCount++) {
+        ray.angle = fixAngle(player.angle + degToRad(rayAngleOffset));
+
+        // Horizontal check
+        depthOfField = 0;
+
+        ray.x = player.x;  
+        ray.y = player.y;
+
+        float aTan = -1 / tan(ray.angle);
+
+        if (isRayLookingUp(ray)) {
+            ray.y = (((int)player.y >> 6) << 6) - 0.0001;
+            ray.x = (player.y - ray.y) * aTan + player.x;
+            rayDeltaY = -MAP_PIXEL_SIZE;
+            rayDeltaX = -rayDeltaY * aTan;
+        } else if (isRayLookingDown(ray)) {
+            ray.y = (((int)player.y >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.x = (player.y - ray.y) * aTan + player.x;
+            rayDeltaY = MAP_PIXEL_SIZE;
+            rayDeltaX = -rayDeltaY * aTan;
+        } else {
+            // left or right;
+            ray.x = player.x;
+            ray.y = player.y;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
+        }
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                distHRayX = ray.x;
+                distHRayY = ray.y;
+                continue;
+            }
+
+            int rayPosY = ray.y / MAP_PIXEL_SIZE;
+            int rayPosX = ray.x / MAP_PIXEL_SIZE;
+
+            int rayPos = rayPosY * MAP_HEIGHT + rayPosX;
+
+            if (rayPos > 0 && map[rayPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distH = distance(player.x, player.y, ray.x, ray.y);
+                distHRayX = ray.x;
+                distHRayY = ray.y;
+                continue;
+            }
+
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
+        }
+
+        // Vertical check
+        depthOfField=0;
+
+        ray.x = player.x;  
+        ray.y = player.y;
+
+        float nTan = -tan(ray.angle);
+
+        float distV = 999999, distVRayX, distVRayY;
+        if (isRayLookingLeft(ray)) {
+            ray.x = (((int)player.x >> 6) << 6) - 0.0001;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = -MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
+
+        } else if (isRayLookingRight(ray)) {
+            ray.x = (((int)player.x >> 6) << 6) + MAP_PIXEL_SIZE;
+            ray.y = (player.x - ray.x) * nTan + player.y;
+            rayDeltaX = MAP_PIXEL_SIZE;
+            rayDeltaY = -rayDeltaX * nTan;
+
+        } else {
+            ray.x = player.x;
+            ray.y = player.y;
+            depthOfField = PLAYER_DEPTH_OF_FIELD;
+        }
+
+        while ((depthOfField++) < PLAYER_DEPTH_OF_FIELD) {
+            if (!isPointInsideMap(ray.x, ray.y)) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                distVRayX = ray.x;
+                distVRayY = ray.y;
+                continue;
+            }
+
+            int rayPosY = ray.y / MAP_PIXEL_SIZE;
+            int rayPosX = ray.x / MAP_PIXEL_SIZE;
+
+            int rayPos = rayPosY * MAP_HEIGHT + rayPosX;
+
+            if (rayPos > 0 && map[rayPos] == 1) {
+                depthOfField = PLAYER_DEPTH_OF_FIELD;
+                distV = distance(player.x, player.y, ray.x, ray.y);
+                distVRayX = ray.x;
+                distVRayY = ray.y;
+                continue;
+            }
+
+            ray.x += rayDeltaX;
+            ray.y += rayDeltaY;
+        }
+
+        float disT;
+        if (distH < distV) {
+            disT = distH;
+            ray.x = distHRayX;
+            ray.y = distHRayY;
+        } else {
+            disT = distV;
+            ray.x = distVRayX;
+            ray.y = distVRayY;
+        }
+
+        // 3D
+        // TODO Ajustar altura do raio, está invertido
+        disT = disT * cos(fixAngle(player.angle - ray.angle));
+        float rayOffsetX = WINDOW_WIDTH / maxRayCount;
+        float lineHeight = disT;
+        glLineWidth(8);
+        glBegin(GL_LINES);
+        glVertex2i(rayCount * rayOffsetX, lineHeight - WINDOW_HEIGHT / 2);
+        glVertex2i(rayCount * rayOffsetX, lineHeight + WINDOW_HEIGHT / 2);
+        glEnd();
+
+        rayAngleOffset++;
+    }
+}
+
 void buttons(unsigned char key, int x, int y) {
     if (key=='a') {
         player.angle -= PLAYER_ANGLE_TURN_SPEED;
@@ -314,6 +475,12 @@ void buttons(unsigned char key, int x, int y) {
         player.y -= sin(player.angle) * PLAYER_MOVE_SPEED;
     }
 
+    // Barra de espaço
+    if (key=='\040') {
+        mode = mode == MODE_2D ? MODE_3D : MODE_2D;
+        printf("Swapping mode: %d\n", mode);
+    }
+
     player.angle = fixAngle(player.angle);
 
     glutPostRedisplay();
@@ -321,9 +488,17 @@ void buttons(unsigned char key, int x, int y) {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    drawMap();
-    drawRays3D();
-    drawPlayer();
+
+    if (mode == MODE_2D) {
+        drawMap2D();
+        drawRays2D();
+        drawPlayer();
+    }
+
+    if (mode == MODE_3D) {
+        drawRays3D();
+    }
+
     glutSwapBuffers();
 }
 
