@@ -442,14 +442,13 @@ void drawRays3D() {
         }
 
         // 3D
-        // TODO Ajustar altura do raio, está invertido
         disT = disT * cos(fixAngle(player.angle - ray.angle));
         float rayOffsetX = WINDOW_WIDTH / maxRayCount;
-        float lineHeight = disT;
-        glLineWidth(8);
+        float lineHeight = (MAP_WIDTH * MAP_HEIGHT) * WINDOW_HEIGHT / 2 / disT;
+        glLineWidth(rayOffsetX);
         glBegin(GL_LINES);
-        glVertex2i(rayCount * rayOffsetX, lineHeight - WINDOW_HEIGHT / 2);
-        glVertex2i(rayCount * rayOffsetX, lineHeight + WINDOW_HEIGHT / 2);
+        glVertex2i((rayCount) * (rayOffsetX+1), 0);
+        glVertex2i((rayCount) * (rayOffsetX+1), lineHeight);
         glEnd();
 
         rayAngleOffset++;
