@@ -319,8 +319,6 @@ void drawRays3D() {
     * the opposite side being the X position
     */
 
-    glColor3f(1, 0, 0);
-
     float distH = 999999, distHRayX, distHRayY;
     int maxRayCount = 60;
     for (rayCount = 0; rayCount < maxRayCount; rayCount++) {
@@ -435,10 +433,12 @@ void drawRays3D() {
             disT = distH;
             ray.x = distHRayX;
             ray.y = distHRayY;
+            glColor3f(0.9, 0.9, 0.9);
         } else {
             disT = distV;
             ray.x = distVRayX;
             ray.y = distVRayY;
+            glColor3f(0.6, 0.6, 0.6);
         }
 
         // 3D
