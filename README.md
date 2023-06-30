@@ -1,9 +1,10 @@
 # OpenGL - Tutorial C
 
 ### `00_test.c`
-  > https://www.youtube.com/watch?v=gYRrGTC7GtA
+  > https://www.youtube.com/watch?v=gYRrGTC7GtA (tutorial)
   
-  > [2023-06-21_00-35-05.webm](https://github.com/PauloUbirajara/opengl-tutorial-c/assets/49159843/90304b95-a7ff-4c57-a6c9-8d474ad13595)
+[raycasting-demo.webm](https://github.com/PauloUbirajara/opengl-tutorial-c/assets/49159843/f8e6f485-34d7-4d39-baa5-29ded70f54e3)
+
 
 ### Links
 - Configurar ambiente no Windows 10
